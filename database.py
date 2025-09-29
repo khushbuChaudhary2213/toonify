@@ -29,17 +29,18 @@ def create_users_table():
         return
 
     create_table_query = """
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        date_of_birth DATE,
-        address TEXT,
-        gender VARCHAR(10),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """
+                CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                date_of_birth DATE,
+                address TEXT,
+                gender VARCHAR(10),
+                pincode INTEGER,  
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """
     
     try:
         cur = conn.cursor()

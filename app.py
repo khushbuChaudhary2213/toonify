@@ -4,6 +4,7 @@ import auth
 import base64
 from streamlit_option_menu import option_menu
 
+####### NAV BAR ######
 nav_items = ["Home","Login","Account"]
 
 nav_css = {"container":{"padding":"5px","background-color":"#323232fc","border-radius": "8px","transition": "background-color 0.2s"}
@@ -21,7 +22,7 @@ selected_nav = option_menu(menu_title=None,
                         )
 
 
-
+####### BACKGROUND IMAGE ######
 def set_background_image(image_path: str) -> None:
     """Set a background image for the Streamlit app using base64 encoding."""
     with open(image_path, "rb") as image_file:
@@ -87,7 +88,7 @@ set_background_image("./img/bg-img.png")
 st.markdown("<div class='header'><div class='top-title'>Toonify</div></div>", unsafe_allow_html=True)
 
 
-# Initialize session states if not present
+##### Initialize session states if not present #####
 if "show_login" not in st.session_state:
     st.session_state.show_login = False
 if "show_signup" not in st.session_state:
@@ -96,7 +97,7 @@ if "current_user" not in st.session_state:
     st.session_state.current_user = None
 
 
-# Main view: Welcome and hero section with login/signup buttons
+#### Main view: Welcome and hero section#####
 def show_home():
         st.markdown(
             """
@@ -115,6 +116,7 @@ def show_home():
         else :
             pass
 
+##### ACCOUNT SECTION ####
 def show_account():
     if st.session_state.current_user == None:
         st.markdown(
@@ -129,6 +131,14 @@ def show_account():
         st.markdown(
                 """
                 <style>
+                    [data-testid="stLayoutWrapper"]{
+                        margin-top:18px;
+                        background-color:#c7c6c6d4;
+                        color:black;
+                        border-radius: 12px;
+                        text-align:center;
+                        padding:12px;
+                    }
                     [data-testid="stHeadingWithActionElements"] h3{
                       text-align:center;
                       background-color: #c7c6c6d4; 
@@ -137,21 +147,24 @@ def show_account():
                       border-radius: 20px;   
                     }
                     [data-testid="stBaseButton-secondary"]{
-                        margin: 24px 0 0 140px;
-                        color:black;
+                        margin-left: 20px;
                         border-radius: 12px; /* rounded pill shape */
-                        background-color:#c7c6c6d4;
-                        width:400px;
+                        background-color:#5f5f5fd2; 
+                        width:280px;
                         border: 3px solid black;
+                        color:#bebdbd;
                         cursor: pointer;
                         transition: background-color 0.3s, color 0.3s;
                     }
                     [data-testid="stBaseButton-secondary"]:hover{
-                        color:white;
+                        background-color:black;
                     }
                     [data-testid="stBaseButton-secondary"] p{
                         font-weight: 600;
                         font-size:24px;
+                    }
+                    [data-testid="stHorizontalBlock"]{
+                        padding:12px;
                     }
                 </style>
                 <div class='account'>
@@ -161,18 +174,38 @@ def show_account():
                 unsafe_allow_html=True
             )
         st.subheader("""Logged In As""")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Name:")
-            st.subheader("Email:")
-        with col2:
-            st.subheader(f"{st.session_state.current_user["username"]}")
-            email = st.session_state.current_user["email"].replace("@", "@ ").replace(".", ". ")
-            st.subheader(email)
-        if st.button("Log Out", on_click=auth.logout_user):
-            st.session_state.current_user = None
+        user = st.session_state.current_user
+        # user = {"username":"Khushbu","email":"asdf@gmail.com","date_of_birth":"2025-09-12","address":"sdfisoan","gender":"Female","pincode":121656}
+    
+        #### EDIT FORM ####
+        def show_edit_form():
+            st.session_state.edit_mode = True
+    
+        if 'edit_mode' not in st.session_state:
+            st.session_state.edit_mode = False
         
-        
+        if not st.session_state.edit_mode:
+            # Show user details
+            with st.container():
+                st.markdown(f"#### Name => {user['username']}")
+                email = user['email'].replace("@", "@ ").replace(".", ". ")
+                st.markdown(f"#### Email => {email}")
+                st.markdown(f"#### Date Of Birth => {user['date_of_birth']}")
+                st.markdown(f"#### Address => {user['address']}")
+                st.markdown(f"#### Gender => {user['gender']}")
+                st.markdown(f"#### Pincode => {user['pincode']}")
+            
+            col1, col2 = st.columns(2)    
+            with col1:
+                st.button("Edit User Details",on_click=show_edit_form)
+            with col2:
+               if st.button("Log Out", on_click=auth.logout_user):
+                   st.session_state.current_user = None
+        else:
+            auth.edit_details(user)
+
+
+#### NAV BAR LOGIC        
 if selected_nav == "Home":
     show_home()
 elif selected_nav == "Login":
@@ -185,11 +218,8 @@ elif selected_nav == "Login":
        auth.signup()
         
 elif selected_nav == "Account":
-    pass
-    # show account or signup logic here as needed
     if st.session_state.current_user == None:
             show_account()
-            
     else:
        if st.session_state.current_user:
             show_account()

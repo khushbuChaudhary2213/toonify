@@ -5,6 +5,7 @@ import datetime
 
 from database import get_db_connection
 
+#### CSS for FORM ####
 form_css = """
         <style>
         [data-testid="stElementContainer"]{
@@ -39,6 +40,8 @@ form_css = """
         </style>
         """
 
+#### VALIDATION FUNCTIONS ####
+
 def is_valid_email(email):
     # Basic regex for email validation
     regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
@@ -58,6 +61,14 @@ def is_strong_password(password):
         return False
     return True
 
+def validate_pincode(number_input):
+    try:
+        pincode = int(number_input)
+    except ValueError:
+        return False
+    return 100000 <= pincode <= 999999
+
+
 def username_exists(username):
     try:
         conn = get_db_connection()
@@ -76,7 +87,7 @@ def get_user_by_username(username):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT username, password,email FROM users WHERE username=%s", (username,))
+        cur.execute("SELECT username, password,email, date_of_birth, address, gender, pincode FROM users WHERE username=%s", (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -85,6 +96,7 @@ def get_user_by_username(username):
         st.error(f"Error fetching user: {e}")
         return None
 
+#### FORM SHOW AND HIDE LOGIC USING SESSION STATE ####
 
 def show_login():
     st.session_state.show_login = True
@@ -95,8 +107,11 @@ def show_signup():
     st.session_state.show_signup = True
 def logout_user():
     st.session_state.current_user=None
-   
+def close_edit_form():
+    st.session_state.edit_mode = False
+    
 
+#### LOGIN FORM ####
 def login():
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
@@ -131,12 +146,20 @@ def login():
                 if user is None:
                     st.error("Invalid username or password.")
                 else:
-                    stored_username, stored_hash,stored_email = user
+                    stored_username, stored_hash,stored_email, stored_dob,stored_address, stored_gender,stored_pincode = user
                     if bcrypt.checkpw(
                         password.encode(),
                         stored_hash.encode() if isinstance(stored_hash, str) else stored_hash,
                     ):
-                        st.session_state.current_user = {"username": stored_username,"email": stored_email}
+                        st.session_state.current_user = {
+                            "username": stored_username,
+                            "email": stored_email,
+                            "date_of_birth": stored_dob,
+                            "address": stored_address,
+                            "gender": stored_gender,
+                            "pincode": stored_pincode,
+                        }
+
                         st.success(f"Welcome back, {stored_username}!")
 
                     else:
@@ -151,6 +174,7 @@ def login():
         st.subheader("Don't have an account?")
         st.button("Create New Account", on_click=show_signup,key="sign_btn")
 
+#### SIGN UP FORM ####
 def signup():
     st.markdown(form_css,unsafe_allow_html=True,)
     with st.container():
@@ -179,17 +203,19 @@ def signup():
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
         with col2:
-            st.title("")
+            pincode = st.text_input("Pincode")
             confirm = st.text_input("Confirm Password", type="password")
         submit = st.button("Sign Up")
         
         if submit:
-            if not username or not email or not password or not confirm or not dob or not address or not gender:
+            if not username or not email or not password or not confirm or not dob or not address or not gender or not pincode:
                 st.error("Please fill in all fields.")
             elif username_exists(username):
                 st.error("Username already taken. Try another.")
             elif not is_valid_email(email):
                 st.error("Invalid email format.")
+            elif not validate_pincode(pincode):
+                st.error("Pincode must be a 6-digit Number")
             elif not is_strong_password(password):
                 st.error(
                     "Password must be at least 8 characters long and include uppercase, lowercase, digit, and special character."
@@ -202,16 +228,17 @@ def signup():
                     conn = get_db_connection()
                     cur = conn.cursor()
                     cur.execute(
-                            "INSERT INTO users (username, email, password, date_of_birth, address, gender) VALUES (%s, %s, %s, %s, %s, %s)",
+                            "INSERT INTO users (username, email, password, date_of_birth, address, gender, pincode) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                             (
                                 username,
                                 email,
                                 hashed_pw.decode() if hasattr(hashed_pw, 'decode') else hashed_pw,
                                 dob,
                                 address,
-                                gender
+                                gender,
+                                pincode  # add pincode value here
                             )
-                        )
+                            )   
                     conn.commit()
                     cur.close()
                     conn.close()
@@ -221,3 +248,59 @@ def signup():
         st.write("---")
         st.subheader("Already have an account?")
         st.button("Log In", on_click=show_login)  
+ 
+#### EDIT USER DETAILS ####       
+def edit_details(user):
+    st.markdown("""
+                    <style>
+                        .div.stButton > button{
+                            margin-top:0px;
+                            padding-top:0px;
+                        }
+                        [data-testid="stBaseButton-secondary"]{
+                            margin-left:18px;
+                            padding:0;
+                        }
+                    </style>
+                """,unsafe_allow_html=True)
+    st.markdown(form_css,unsafe_allow_html=True)
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            username = st.text_input("Name", value=user.get("username", ""))
+            email = st.text_input("Email", value=user.get("email", ""))
+            address = st.text_area("Address", value=user.get("address", ""))
+        with col2:
+            date_of_birth = st.date_input("Date Of Birth", value=user.get("date_of_birth"))
+            pincode = st.number_input("Pincode", value=int(user.get("pincode") or 100000), min_value=100000, max_value=999999, step=1)
+    
+    col1, col2 = st.columns(2,vertical_alignment="center")
+    with col1:
+        if st.button("Save Changes"):
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cur = conn.cursor()
+                    cur.execute("""
+                        UPDATE users SET username=%s, email=%s, date_of_birth=%s, address=%s, pincode=%s
+                        WHERE username=%s
+                    """, (username, email, date_of_birth, address, pincode, user["username"]))
+                    conn.commit()
+                    cur.close()
+                    
+                    # Update session state
+                    st.session_state.current_user.update({
+                        "username": username,
+                        "email": email,
+                        "date_of_birth": date_of_birth,
+                        "address": address,
+                        "pincode": pincode
+                    })
+                    st.success("Account details updated successfully!")
+                    st.button("Close",on_click=close_edit_form)
+                except Exception as e:
+                    st.error(f"Failed to update user details: {e}")
+                finally:
+                    conn.close()
+    with col2:
+        st.button("Cancel",on_click=close_edit_form)
