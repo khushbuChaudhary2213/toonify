@@ -2,6 +2,7 @@ import streamlit as st
 import re
 import bcrypt
 import datetime
+import time
 
 from database import get_db_connection
 
@@ -33,7 +34,7 @@ form_css = """
                 cursor: pointer;
                 transition: background-color 0.3s, color 0.3s;
         }
-        div.stButton > button:hover {background-color: #5599ff;
+        div.stButton > button:hover {
                 background-color: black;
                 color:white;
         }
@@ -98,23 +99,33 @@ def get_user_by_username(username):
 
 #### FORM SHOW AND HIDE LOGIC USING SESSION STATE ####
 
+keys = ["login_username", "login_password", "signup_username", "signup_password"]
+
 def show_login():
+    for key in keys:
+        st.session_state[key]=""
     st.session_state.show_login = True
     st.session_state.show_signup = False
 
 def show_signup():
+    for key in keys:
+        st.session_state[key]=""
     st.session_state.show_login = False
     st.session_state.show_signup = True
 def logout_user():
-    st.session_state.current_user=None
+    st.session_state.current_user = None
+    # st.session_state.redirect_to_nav = "Login"
 def close_edit_form():
     st.session_state.edit_mode = False
     
+
 
 #### LOGIN FORM ####
 def login():
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
+    if "redirect_to_nav" not in st.session_state:
+        st.session_state.redirect_to_nav = None
 
     st.markdown(form_css,
         unsafe_allow_html=True,
@@ -134,9 +145,9 @@ def login():
     with st.container():
         st.title("Login Form")
         
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submit = st.button("Log In")
+        username = st.text_input("Username",key="login_username", value="")
+        password = st.text_input("Password",key="login_password" ,type="password", value="")
+        submit = st.button("Log In", key="login_btn")
         
         if submit:
             if not username or not password:
@@ -159,9 +170,13 @@ def login():
                             "gender": stored_gender,
                             "pincode": stored_pincode,
                         }
-
+                        
+                        # st.session_state.redirect_to_nav = "Home"
                         st.success(f"Welcome back, {stored_username}!")
-
+                        with st.spinner('Redirecting To Home..'):
+                            time.sleep(2) 
+                        st.rerun()
+                        # st.stop()
                     else:
                         st.error("Invalid username or password.")
         
@@ -172,8 +187,9 @@ def login():
                 st.session_state.current_user = None
         st.write("---")
         st.subheader("Don't have an account?")
-        st.button("Create New Account", on_click=show_signup,key="sign_btn")
-
+        st.button("Create New Account", on_click=show_signup,key="show_signup_btn")
+    
+        
 #### SIGN UP FORM ####
 def signup():
     st.markdown(form_css,unsafe_allow_html=True,)
@@ -188,8 +204,8 @@ def signup():
         st.title("Create A New Account")
         cola1, cola2 = st.columns(2)
         with cola1:
-            username = st.text_input("Username")
-            address = st.text_area("Address")
+            username = st.text_input("Username",key="signup_username" , value="")
+            address = st.text_area("Address",key="signup_address" ,value="")
         with cola2:
             dob = st.date_input(
                 "DOB",
@@ -200,16 +216,16 @@ def signup():
             gender = st.radio("Gender",["Male","Female","Other"], key="gender")
         col1, col2 = st.columns(2,vertical_alignment="center")
         with col1:
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
+            email = st.text_input("Email",key="signup_email"  ,value="")
+            password = st.text_input("Password",key="signup_password"  ,type="password", value="")
         with col2:
-            pincode = st.text_input("Pincode")
-            confirm = st.text_input("Confirm Password", type="password")
-        submit = st.button("Sign Up")
+            pincode = st.text_input("Pincode",key="signup_pincode"  ,value="")
+            confirm = st.text_input("Confirm Password",key="signup_confirm_password"  ,type="password", value="")
+        submit = st.button("Sign Up", key="signup_btn")
         
         if submit:
             if not username or not email or not password or not confirm or not dob or not address or not gender or not pincode:
-                st.error("Please fill in all fields.")
+                st.error("Please fill in all fields.")         
             elif username_exists(username):
                 st.error("Username already taken. Try another.")
             elif not is_valid_email(email):
@@ -236,18 +252,24 @@ def signup():
                                 dob,
                                 address,
                                 gender,
-                                pincode  # add pincode value here
+                                pincode 
                             )
-                            )   
+                    )   
                     conn.commit()
                     cur.close()
                     conn.close()
                     st.success("Account created successfully!")
+                    with st.spinner('Redirecting To Login..'):
+                        time.sleep(3) 
+                    st.session_state.show_signup = False
+                    st.session_state.show_login = True
+                    st.rerun()   
+                    
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
         st.write("---")
         st.subheader("Already have an account?")
-        st.button("Log In", on_click=show_login)  
+        st.button("Log In",key="show_login_btn", on_click=show_login)  
  
 #### EDIT USER DETAILS ####       
 def edit_details(user):
@@ -288,7 +310,6 @@ def edit_details(user):
                     conn.commit()
                     cur.close()
                     
-                    # Update session state
                     st.session_state.current_user.update({
                         "username": username,
                         "email": email,

@@ -15,7 +15,6 @@ def get_db_connection():
             host=hostname,
             port=port_id,
         )
-        # print("Connected to PostgreSQL successfully")
         return conn
     except Exception as e:
         print("Connection failed")
