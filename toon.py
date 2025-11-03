@@ -12,62 +12,7 @@ import os
 import sys
 from urllib.request import urlopen
 
-# -----------------------
-# FUNCTION FOR DOWNLOADING THE GENERATED IMAGE
 
-def download_img(outputImg,style):
-        buf = BytesIO()
-
-        # Convert to PIL.Image if it's a NumPy array
-        if isinstance(outputImg, np.ndarray):
-            Image.fromarray(outputImg).save(buf, format="PNG")
-        elif isinstance(outputImg, Image.Image):
-            outputImg.save(buf, format="PNG")
-        else:
-            raise TypeError("outputImg must be a PIL.Image or a NumPy array")
-
-        buf.seek(0)
-        st.download_button(
-            label="📥 Download Cartoon",
-            data=buf.getvalue(),
-            file_name=f"cartoon_{style}.png",
-            mime="image/png"
-        )
-        
-# -----------------------
-# FUNCTION FOR SHOWING THE ORIGINAL AND GENERATED IMAGE
-
-def show_toonify(original_img,toonified_img,image_desc):
-    st.markdown("""
-                <style>
-                    [data-testid="stCaptionContainer"] p{
-                        color: #000000;
-                        font-size: 20px;
-                        background-color: white;
-                        font-weight: bold;
-                        text-transform: uppercase;
-                    }
-                    [data-testid="stDownloadButton"] {
-                        align-items: center;
-                        margin-left: 246px;
-                        font-size: 24px;
-                    }
-                    [data-testid="stDownloadButton"] [data-testid="stBaseButton-secondary"] [data-testid="stMarkdownContainer"] p {
-                        font-size: 20px;
-                    }
-                    
-                </style>
-                """, unsafe_allow_html=True)
-    
-    st.session_state["cartoon_img"] = toonified_img  
-    # Show both
-    col1, col2 = st.columns(2)
-    with col1:
-        st.image(original_img,"Original")
-    with col2:
-        st.image(st.session_state["cartoon_img"],image_desc)
-        
-    download_img(st.session_state["cartoon_img"],image_desc)
 
 # -----------------------
 # PENCIL SKETCH
@@ -93,7 +38,7 @@ def pencilSketch(imgUrl):
     # Optional: make it more sketchy (slightly blur)
     sketch = cv2.GaussianBlur(inverted, (3, 3), 0)
 
-    show_toonify(imgUrl,sketch,"Pencil Sketch")
+    return sketch
     
 # -----------------------
 # OIL PAINTING
@@ -130,7 +75,7 @@ def oilPainting(imgUrl):
     oil_paint = oil_paint.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
     
     # Display or return
-    show_toonify(imgUrl, oil_paint,"Oil Painting")
+    return oil_paint
     
 # -----------------------
 # COLORED SKETCH
@@ -186,7 +131,7 @@ def coloredSketch(img_path: str) -> Image.Image:
     # Convert to PIL Image
     final =  Image.fromarray(final_rgb)
     
-    show_toonify(img_path, final,"Colored Sketch")
+    return final
     
 # -----------------------
 # CLASSIC CARTOON
@@ -240,7 +185,7 @@ def classic_cartoon(img_path: str) -> Image.Image:
     # ---- Step 7: Return cartoon image as PIL Image ----
     cartoon_pil = Image.fromarray(cartoon)
     # return cartoon_pil
-    show_toonify(img_path,cartoon_pil,"Classic Cartoon")
+    return cartoon_pil
     
 
 # -----------------------
@@ -378,7 +323,7 @@ def cartoon_neural_style(image_input, style_model_path: str, resize: int = 512, 
     
     style_name = style_model_path[7:-4].capitalize()+" "+"Style"
     
-    show_toonify(image_input, cartoon_img,style_name)
+    return cartoon_img
 
 
 # -----------------------
@@ -411,7 +356,7 @@ def disney_cartoon(image_path):
         if cartoon is not None:
             # BGR image (for OpenCV compatibility)
             cartoon_resized = cv2.resize(cartoon, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
-            show_toonify(image_path,cartoon_resized,"Disney Cartoon")
+            return cartoon_resized
         else:
             return None
     except Exception as e:

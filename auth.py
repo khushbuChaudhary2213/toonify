@@ -3,43 +3,8 @@ import re
 import bcrypt
 import datetime
 import time
-
+import styling
 from database import get_db_connection
-
-#### CSS for FORM ####
-form_css = """
-        <style>
-        [data-testid="stElementContainer"]{
-            margin-bottom:-10px;
-        }
-        [data-testid="stLayoutWrapper"] {
-            backdrop-filter:blur(20px);
-            background-color: #aeaeae4a !important;  
-            padding: 30px;
-            border-radius: 15px;
-            # color:black;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            margin: auto;
-        }
-        [data-testid="stHeadingWithActionElements"]{
-            text-align:center;
-            margin-top:0;
-        }
-        div.stButton > button {
-                margin-top: 10px;
-                border-radius: 12px; /* rounded pill shape */
-                background-color:#5f5f5f81;
-                font-weight: 600;
-                border: 3px solid black;
-                cursor: pointer;
-                transition: background-color 0.3s, color 0.3s;
-        }
-        div.stButton > button:hover {
-                background-color: black;
-                color:white;
-        }
-        </style>
-        """
 
 #### VALIDATION FUNCTIONS ####
 
@@ -124,10 +89,8 @@ def close_edit_form():
 def login():
     if "current_user" not in st.session_state:
         st.session_state.current_user = None
-    if "redirect_to_nav" not in st.session_state:
-        st.session_state.redirect_to_nav = None
 
-    st.markdown(form_css,
+    st.markdown(styling.form_css,
         unsafe_allow_html=True,
     )
     st.markdown("""
@@ -192,7 +155,7 @@ def login():
         
 #### SIGN UP FORM ####
 def signup():
-    st.markdown(form_css,unsafe_allow_html=True,)
+    st.markdown(styling.form_css,unsafe_allow_html=True,)
     with st.container():
         st.markdown("""
                      <style>
@@ -273,19 +236,8 @@ def signup():
  
 #### EDIT USER DETAILS ####       
 def edit_details(user):
-    st.markdown("""
-                    <style>
-                        .div.stButton > button{
-                            margin-top:0px;
-                            padding-top:0px;
-                        }
-                        [data-testid="stBaseButton-secondary"]{
-                            margin-left:18px;
-                            padding:0;
-                        }
-                    </style>
-                """,unsafe_allow_html=True)
-    st.markdown(form_css,unsafe_allow_html=True)
+    st.markdown(styling.edit_details_css,unsafe_allow_html=True)
+    st.markdown(styling.form_css,unsafe_allow_html=True)
     with st.container():
         col1, col2 = st.columns(2)
         with col1:

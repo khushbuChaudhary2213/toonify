@@ -2,233 +2,205 @@ import streamlit as st
 import auth
 import base64
 import tempfile
-import toon
 from streamlit_option_menu import option_menu
+import payment
+import cv2
+import toon
+import styling
 
-
-####### BACKGROUND IMAGE ######
-def set_background_image(image_path: str) -> None:
-    """Set a background image for the Streamlit app using base64 encoding."""
-    with open(image_path, "rb") as image_file:
-        encoded_image = base64.b64encode(image_file.read()).decode()
-    page_css = f"""
-        <style>
-            [data-testid="stAppViewContainer"] {{
-                position: relative;
-                background-image: url("data:image/jpg;base64,{encoded_image}");
-                background-position: center;
-                background-size: cover;
-            }}
-            [class="st-emotion-cache-scp8yw e3g0k5y6"] {{
-                display: none;
-            }}
-            [data-testid="stHeader"] {{
-                background-color: rgba(0, 0, 0, 0);
-            }}
-            .header {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                height: 80px;
-                width: 100vw;
-                background-color: #121212bf;
-                z-index: 100;
-                padding: 0 20px;
-            }}
-            .top-title{{
-                text-align:center;
-                font-size: 42px;
-                font-weight: 800;
-                color: #69a5cc;
-                font-family: 'Inter', sans-serif;
-                letter-spacing: -2px;
-                text-shadow:8px 4px 0 black;
-            }}
-            .hero-title {{
-                text-align: center;
-                background-color: #c7c6c6d4; 
-                border: 4px solid black; 
-                border-radius: 20px; 
-                padding: 40px 80px;
-                overflow: hidden;
-                z-index: 1;
-            }}
-            .hero-title h1{{
-                margin-bottom:20px;
-                
-            }}
-            .hero-title span{{
-                color: black;
-                font-weight:300px;
-                margin-top:12px;
-            }}
-            .account{{
-                text-align:center;
-                background-color: #c7c6c6d4; 
-                color:black;
-                border-radius: 20px; 
-            }}
-            
-        </style>
-    """
-    st.markdown(page_css, unsafe_allow_html=True)
-
+st.set_page_config(page_title="Toonify", layout="centered")
 
 # Set the app background
-set_background_image("./img/bg-img.png")
-
-st.markdown("<div class='header'><div class='top-title'>Toonify</div></div>", unsafe_allow_html=True)
-
+styling.set_background_image("./img/bg-img.png")
 
 ##### Initialize session states if not present #####
-if "show_login" not in st.session_state:
-    st.session_state.show_login = False
-if "show_signup" not in st.session_state:
-    st.session_state.show_signup = False
-if "current_user" not in st.session_state:
-    st.session_state.current_user = None
+keys_for_false = ["show_login","show_signup","show_payment","payment_success"]
+keys_for_none = ["current_user","processed_img","original_img","tmp_path","selected_style"]
 
+for key in keys_for_false:
+    if key not in  st.session_state:
+        st.session_state[key] = False
+for key in keys_for_none:
+    if key not in  st.session_state:
+        st.session_state[key] = None
 
+if "paid_styles" not in st.session_state:
+    st.session_state.paid_styles = set()
 
+def reset_session():
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+##### HEADER #####
+st.markdown("<div class='header'><div class='top-title'>Toonify</div></div>", unsafe_allow_html=True)
+    
+##### STYLES DATA ##### 
+effects = {
+    "Pencil Sketch": {
+        "func": toon.pencilSketch,
+        "filename": "pencil_sketch.png",
+        "price" : "10"
+    },
+    "Colored Sketch": {
+        "func": toon.coloredSketch,
+        "filename": "colored_sketch.png",
+        "price" : "15"
+    },
+    "Oil Painting": {
+        "func": toon.oilPainting,
+        "filename": "oil_painting.png",
+        "price" :"20"
+    },
+    "Classic Cartoon": {
+        "func": toon.classic_cartoon,
+        "filename": "classic_cartoon.png",
+        "price" : "25"
+    },
+    "Udnie Style Cartoon": {
+        "func": toon.cartoon_neural_style,   # function reference
+        "filename": "Udnie_style_cartoon.png",
+        "args": [],                          # positional args besides image_input
+        "kwargs": {                          # keyword arguments
+            "style_model_path": "models/udnie.pth",
+            "resize": 512,
+            "add_edges": True
+        },
+        "price" : "50"
+    },
+    "Candy Style Cartoon": {
+        "func": toon.cartoon_neural_style,   # function reference
+        "filename": "Candy_style_cartoon.png",
+        "args": [],                          # positional args besides image_input
+        "kwargs": {                          # keyword arguments
+            "style_model_path": "models/candy.pth",
+            "resize": 512,
+            "add_edges": True
+        },
+        "price" : "50"
+    },
+    "Mosaic Style Cartoon": {
+        "func": toon.cartoon_neural_style,   # function reference
+        "filename": "Mosaic_style_cartoon.png",
+        "args": [],                          # positional args besides image_input
+        "kwargs": {                          # keyword arguments
+            "style_model_path": "models/mosaic.pth",
+            "resize": 512,
+            "add_edges": True
+        },
+        "price" : "50"
+    },
+    "Disney Cartoon": {
+        "func": toon.disney_cartoon,
+        "filename": "disney_style_cartoon.png",
+        "price" : "40"
+    },  
+}
+        
+#### FUNCTION for RESETTING the GENERATED IMAGE and PAYMENT FORM #####
+def on_style_nd_image_change():
+    st.session_state.processed_img = None
+    st.session_state.show_payment = False
+    st.session_state.payment_success = False
+    st.session_state.paid_styles = set()
+    
+    
+#### DASHBOARD VIEW BEFORE LOGIN #####
+def show_dashboard():
+    st.markdown(styling.home_css,unsafe_allow_html=True)
+    st.markdown(
+                """
+                <div class='hero-title'>
+                    <h1 style="color:#026cb2; border-bottom:3px solid #026cb2; padding-bottom:4px">Welcome In Toonify</h1>
+                    <span>Turn your photos into artwork, sketches, and cartoons with a click – the most simple, beautiful, and no-nonsense cartoonizer and photo editor for all</span>
+                    <h6>In one click you can generate your toonified image</h6>  
+                    
+                </div>
+                """,
+                unsafe_allow_html=True
+        )
+    st.subheader("Preview:")
+    st.image("img/Preview-1.png")
+
+    
 #### Main view: Welcome and hero section#####
 def show_home():
-        st.markdown("""
-                    <style>
-                        [data-testid="stFileUploader"]{
-                            # height:280px;
-                            background-color: #c7c6c6d4;
-                            border-radius: 22px;
-                            border: 4px solid black; 
-                            padding: 22px;
-                            margin-bottom: 18px;
-                            transition: box-shadow 0.2s;
-                            margin-top:12px;    
-                        }
-                        
-                        [data-testid="stFileUploaderFileName"],[class="st-emotion-cache-c8ta4l e1w49r0d0"]{
-                            color:#212121;
-                            font-weight:bold;
-                        }
-                        [class="st-emotion-cache-c8ta4l e1w49r0d0"]{
-                            color:#212121;
-                            font-weight:bold;
-                        }
-                        [data-testid="stWidgetLabel"] p{
-                            color:#212121;
-                            font-size:18px;
-                            font-weight:bold;
-                        }
-                        [data-testid="stSelectbox"]{
-                            background-color: #c7c6c6d4;
-                            border-radius: 22px;
-                            border-bottom:None;
-                            border: 4px solid black; 
-                            padding: 22px;
-                            margin-top:12px;    
-                        }
-                        [data-testid="stElementContainer"] [data-testid="stButton"]{
-                            width:342px;
-                            border-top:none;
-                            border: 4px solid black; 
-                            border-radius: 22px;
-                            padding:22px;
-                            background-color:#c7c6c6d4;
-                            transition:all 0.2s ease-in-out;
-                        }
-                        [data-testid="stBaseButton-secondary"]:hover{
-                            background: #024979;
-                            color:white;
-                            border:1px solid black;   
-                        }
-                        [data-testid="stElementContainer"] [data-testid="stMarkdown"] p{
-                            background-color:#c7c6c6d4;
-                            color:#212121;
-                            padding:16px;
-                            border-radius:22px;
-                            font-size:18px;
-                            font-weight:bold;
-                            
-                        }
-                        [data-testid="stHeadingWithActionElements"] h6{
-                            color:black;
-                                margin-top: 20px;
-                                font-size: 22px;
-                                border: 2px solid #1764a6;
-                                padding: 10px;
-                        }
-                        [data-testid="stImageContainer"] img{
-                            margin-top:20px;
-                        }
-                    </style>
-                    """,unsafe_allow_html=True)
+        st.markdown(styling.home_css,unsafe_allow_html=True)
         st.markdown(
-            """
-            <div class='hero-title'>
-                <h1 style="color:#026cb2; border-bottom:3px solid #026cb2; padding-bottom:4px">Welcome In Toonify</h1>
-                <span>Turn your photos into artwork, sketches, and cartoons with a click – the most simple, beautiful, and no-nonsense cartoonizer and photo editor for all. This project empowers everyone to transform ordinary photos into extraordinary cartoon masterpieces and unique art styles, all in seconds.</span>
-                <h6>In one click you can generate your toonified image,but you need to login first</h6>
-                
-            </div>
-            """,
-            unsafe_allow_html=True
+                """
+                <div class='hero-title'>
+                    <h1 style="color:#026cb2; border-bottom:3px solid #026cb2; padding-bottom:4px">Welcome In Toonify</h1>
+                    <span>Turn your photos into artwork, sketches, and cartoons with a click – the most simple, beautiful, and no-nonsense cartoonizer and photo editor for all</span>
+                    
+                </div>
+                """,
+                unsafe_allow_html=True
         )
         
-        if st.session_state.current_user == None:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.image("./img/person-1.png",caption="Original")
-            with col2:
-                st.image("./img/cartoon_Classic Cartoon.png",caption="Classic Cartoon")
-        
-        styles ={"Pencil Sketch","Colored Sketch","Classic Cartoon","Oil Painting","Udnie Style Cartoon","Mosaic Style Cartoon","Candy Style Cartoon","Disney Cartoon"}
-        
-        if st.session_state.current_user != None:
-            col1, col2 = st.columns(2)
-            with col1:
-                image = st.file_uploader("Upload Image:", type=['jpg','png','jpeg'])
-
+        if st.session_state.current_user is not None:           
+            image = st.file_uploader("Upload Image:", type=['jpg','png','jpeg'], on_change=on_style_nd_image_change)
+                
             if image:
-                with col2:
-                    options = list(styles) 
-                    style_choice = st.selectbox("Choose a cartoon style:", options)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                     tmp_file.write(image.getbuffer())
+                     temp_image_path = tmp_file.name
+                     st.session_state.tmp_path = temp_image_path
+                
+                styles = effects.keys()
+                options = list(styles) 
+                
+                cola1, cola2 = st.columns(2)
+                with cola1:
+                    style_choice = st.selectbox("Choose a cartoon style:", options, on_change=on_style_nd_image_change)
+                with cola2:
                     st.write("Click on button to generate image:")
                     generate_btn = st.button("Generate")
+                    
+                img_array = cv2.imread(st.session_state.tmp_path)
+                st.session_state.original_img = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
             
                 if generate_btn and image:
-                    # Add the spinner here
-                    with st.spinner("Generating image..."):
-                        # Write the image to a temporary file
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-                            tmp_file.write(image.getbuffer())
-                            temp_image_path = tmp_file.name
-                            
-                        if style_choice == 'None':
-                            pass 
-                        if style_choice == "Pencil Sketch":
-                            toon.pencilSketch(temp_image_path)
-                        if style_choice == "Oil Painting":
-                            toon.oilPainting(temp_image_path)
-                        if style_choice == "Colored Sketch":
-                            toon.coloredSketch(temp_image_path)
-                        if style_choice == "Classic Cartoon":
-                            toon.classic_cartoon(temp_image_path)
-                        if style_choice == "Udnie Style Cartoon":
-                            toon.cartoon_neural_style(temp_image_path, "models/udnie.pth")
-                        if style_choice == "Mosaic Style Cartoon":
-                            toon.cartoon_neural_style(temp_image_path, "models/mosaic.pth")
-                        # if style_choice == "RainPrincess Style Cartoon":
-                        #     cartoon.cartoon_neural_style(temp_image_path, "models/rain_princess.pth")
-                        if style_choice == "Disney Cartoon":
-                            toon.disney_cartoon(temp_image_path)
-                        if style_choice == "Candy Style Cartoon":
-                            toon.cartoon_neural_style(temp_image_path, "models/candy.pth")
+                    effect_info = effects[style_choice]
+                    func = effect_info["func"]
+                    args = effect_info.get("args", [])
+                    kwargs = effect_info.get("kwargs", {})
+                    
+                    processed = func(st.session_state.tmp_path, *args, **kwargs)
+                    
+                    st.session_state.processed_img = processed
+                        
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.session_state.original_img is not None:
+                        st.image(st.session_state.original_img, caption="Original Image")
+                with col2:
+                    if st.session_state.original_img is not None:
+                        if st.session_state.processed_img is not None:
+                            st.image(st.session_state.processed_img, caption=f"{style_choice}")
                         else:
-                            pass
-        else :
-            pass
+                            st.text("Click on generate button above. ⬆️")
+                            
+                                      
+                if style_choice in st.session_state.paid_styles:
+                    payment.get_image_download_link(st.session_state.processed_img,style_choice)
+                    st.session_state.payment_success = False  # reset flag
+                    
+                if (style_choice not in st.session_state.paid_styles) and (st.session_state.processed_img is not None):
+                    if not st.session_state.show_payment and not st.session_state.payment_success:
+                        if st.button("📩 Download"):
+                            st.session_state.show_payment = True
 
-##### ACCOUNT SECTION ####
-def show_account():
+                    # Show form if Download clicked
+                    if st.session_state.show_payment:
+                        payment.show_payment_form(style_choice)
+
+                    # Automatically show download if payment done
+                    if st.session_state.payment_success:
+                        payment.get_image_download_link(st.session_state.processed_img,style_choice)
+
+
+##### Profile SECTION ####
+def show_profile():
     if st.session_state.current_user == None:
         st.markdown(
                 """
@@ -239,51 +211,7 @@ def show_account():
                 unsafe_allow_html=True
             )
     else:
-        st.markdown(
-                """
-                <style>
-                    [data-testid="stLayoutWrapper"]{
-                        margin-top:18px;
-                        background-color:#c7c6c6d4;
-                        color:black;
-                        border-radius: 12px;
-                        text-align:center;
-                        padding:12px;
-                    }
-                    [data-testid="stHeadingWithActionElements"] h3{
-                      text-align:center;
-                      background-color: #c7c6c6d4; 
-                      margin-top:12px;
-                      color:black;
-                      border-radius: 20px;   
-                    }
-                    [data-testid="stBaseButton-secondary"]{
-                        margin-left: 20px;
-                        border-radius: 12px; /* rounded pill shape */
-                        background-color:#5f5f5fd2; 
-                        width:280px;
-                        border: 3px solid black;
-                        color:#bebdbd;
-                        cursor: pointer;
-                        transition: background-color 0.3s, color 0.3s;
-                    }
-                    [data-testid="stBaseButton-secondary"]:hover{
-                        background-color:black;
-                    }
-                    [data-testid="stBaseButton-secondary"] p{
-                        font-weight: 600;
-                        font-size:24px;
-                    }
-                    [data-testid="stHorizontalBlock"]{
-                        padding:12px;
-                    }
-                </style>
-                <div class='account'>
-                    <h1>Account Section</h1>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        st.markdown(styling.profile_css,unsafe_allow_html=True)
         st.subheader("""Logged In As""")
         user = st.session_state.current_user
         # user = {"username":"Khushbu","email":"asdf@gmail.com","date_of_birth":"2025-09-12","address":"sdfisoan","gender":"Female","pincode":121656}
@@ -315,57 +243,66 @@ def show_account():
         else:
             auth.edit_details(user)
 
-####### NAV BAR ######
-nav_items_after_login = ["Home","Account","Log Out"]
-nav_icons_after_login = ["house","person","box-arrow-right"]
-# nav_items_before_login = ["Login","Home"]
-# nav_icons_before_login = ["person-circle","house"]
 
-# Render menu and store selected index in session_state
-nav_css = {"container":{"padding":"5px","background-color":"#323232fc","border-radius": "8px","transition": "background-color 0.2s"}
-           ,"nav-link": {"color": "white", "font-size": "18px", "--hover-color": "#444"}
-           ,"nav-link-selected": {"background-color": "#024979", "color": "#fff"}
-           }
+####### NAV BAR #####
 
-# Render menu once
-if st.session_state.current_user is not None:
-    selected_nav = option_menu(
-        menu_title=None,
-        options=nav_items_after_login ,
-        icons=nav_icons_after_login ,
-        orientation="horizontal",
-        default_index=0,
-        styles=nav_css,
-        key="nav_bar"
-    )    
+# ---------- NAVBAR CONFIG ----------
+nav_items_after_login = ["Home", "Profile", "Log Out"]
+nav_icons_after_login = ["house", "person", "box-arrow-right"]
 
-            
-if st.session_state.current_user is None:
-    if st.session_state.show_signup:
-        st.session_state.show_login = False
-        auth.signup()
-        
-    else:
-        st.session_state.show_login = True
-        st.session_state.show_signup = False
-        auth.login()
+nav_items_before_login = ["Home", "Login"]
+nav_icons_before_login = ["house", "person-circle"]
 
+# ---------- SESSION STATE DEFAULTS ----------
+if "menu_choice" not in st.session_state:
+    st.session_state.menu_choice = "Login"
     
+
+if st.session_state.current_user:
+        # Menu shown after login
+        selected = option_menu(
+            None,
+            nav_items_after_login,
+            icons=nav_icons_after_login,
+            styles=styling.nav_css,
+            orientation="horizontal",
+            default_index=nav_items_after_login.index(st.session_state.menu_choice)
+            if st.session_state.menu_choice in nav_items_after_login
+            else 0,
+        )
 else:
-    if selected_nav == "Home":
-        show_home()
-
-    elif selected_nav == "Account":
-        show_account()
-
-    elif selected_nav == "Log Out": 
-
-        st.session_state.current_user = None
-        st.session_state.show_login = True
-        st.session_state.show_signup = False
-        st.session_state["selected_nav"] = "Login" 
+        # Menu shown before login
+        selected = option_menu(
+            None,
+            nav_items_before_login,
+            icons=nav_icons_before_login,
+            styles=styling.nav_css,
+            orientation="horizontal",
+            default_index=1,
+        )
         
+st.session_state.menu_choice = selected  # keep track of the selection
+
+# ---------- PAGE LOGIC ----------
+if st.session_state.current_user is None:
+    # ---- BEFORE LOGIN ----
+    if selected == "Home":
+        show_dashboard()
+    elif selected == "Login":
+        if st.session_state.show_signup:
+            st.session_state.show_login = False
+            auth.signup()
+        else:
+            st.session_state.show_login = True
+            st.session_state.show_signup = False
+            auth.login()
+else:
+    # ---- AFTER LOGIN ----
+    if selected == "Home":
+        show_home()
+    elif selected == "Profile":
+        show_profile()
+    elif selected == "Log Out":
+        reset_session()
+        st.session_state.menu_choice = "Home"  
         st.rerun()
-    
-
-

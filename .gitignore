@@ -1,0 +1,16 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+# Ignore virtual environment
+venv/
+*.venv
+env/
+
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore environment files (if any)
+*.env
+
+# Ignore requirements.txt (as per your request)
+requirements.txt
