@@ -2,6 +2,7 @@ import streamlit as st
 import auth
 import base64
 import tempfile
+import uuid
 from streamlit_option_menu import option_menu
 import payment
 import cv2
@@ -10,31 +11,6 @@ import styling
 
 st.set_page_config(page_title="Toonify", layout="centered")
 
-# Set the app background
-styling.set_background_image("./img/bg-img.png")
-
-##### Initialize session states if not present #####
-keys_for_false = ["show_login","show_signup","show_payment","payment_success"]
-keys_for_none = ["current_user","processed_img","original_img","tmp_path","selected_style"]
-
-for key in keys_for_false:
-    if key not in  st.session_state:
-        st.session_state[key] = False
-for key in keys_for_none:
-    if key not in  st.session_state:
-        st.session_state[key] = None
-
-if "paid_styles" not in st.session_state:
-    st.session_state.paid_styles = set()
-
-def reset_session():
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
-
-##### HEADER #####
-st.markdown("<div class='header'><div class='top-title'>Toonify</div></div>", unsafe_allow_html=True)
-    
 ##### STYLES DATA ##### 
 effects = {
     "Pencil Sketch": {
@@ -96,6 +72,21 @@ effects = {
         "price" : "40"
     },  
 }
+
+# ---------- NAVBAR CONFIG (Constants) ----------
+NAV_ITEMS_AFTER_LOGIN = ["Home", "Profile", "Log Out"]
+NAV_ICONS_AFTER_LOGIN = ["house", "person", "box-arrow-right"]
+NAV_ITEMS_BEFORE_LOGIN = ["Home", "Login"]
+NAV_ICONS_BEFORE_LOGIN = ["house", "person-circle"]
+
+
+##### FUNCTION DEFINITIONS #####
+def reset_session():
+    # Keep menu_choice to prevent flicker on rerun, delete everything else
+    menu_choice = st.session_state.get("menu_choice", "Home")
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.session_state.menu_choice = menu_choice # Restore it
         
 #### FUNCTION for RESETTING the GENERATED IMAGE and PAYMENT FORM #####
 def on_style_nd_image_change():
@@ -244,65 +235,87 @@ def show_profile():
             auth.edit_details(user)
 
 
-####### NAV BAR #####
 
-# ---------- NAVBAR CONFIG ----------
-nav_items_after_login = ["Home", "Profile", "Log Out"]
-nav_icons_after_login = ["house", "person", "box-arrow-right"]
+def main():
+    # Set the app background
+    styling.set_background_image("./img/bg-img.png")
 
-nav_items_before_login = ["Home", "Login"]
-nav_icons_before_login = ["house", "person-circle"]
+    ##### Initialize session states if not present #####
+    keys_for_false = ["show_login","show_signup","show_payment","payment_success"]
+    keys_for_none = ["current_user","processed_img","original_img","tmp_path","selected_style"]
 
-# ---------- SESSION STATE DEFAULTS ----------
-if "menu_choice" not in st.session_state:
-    st.session_state.menu_choice = "Login"
+    for key in keys_for_false:
+        if key not in  st.session_state:
+            st.session_state[key] = False
+    for key in keys_for_none:
+        if key not in  st.session_state:
+            st.session_state[key] = None
+            
+    if "paid_styles" not in st.session_state:
+        st.session_state.paid_styles = set()
     
+    if "menu_choice" not in st.session_state:
+        st.session_state.menu_choice = "Login"
 
-if st.session_state.current_user:
-        # Menu shown after login
-        selected = option_menu(
-            None,
-            nav_items_after_login,
-            icons=nav_icons_after_login,
-            styles=styling.nav_css,
-            orientation="horizontal",
-            default_index=nav_items_after_login.index(st.session_state.menu_choice)
-            if st.session_state.menu_choice in nav_items_after_login
-            else 0,
-        )
-else:
-        # Menu shown before login
-        selected = option_menu(
-            None,
-            nav_items_before_login,
-            icons=nav_icons_before_login,
-            styles=styling.nav_css,
-            orientation="horizontal",
-            default_index=1,
-        )
-        
-st.session_state.menu_choice = selected  # keep track of the selection
+    ##### HEADER #####
+    st.markdown("<div class='header'><div class='top-title'>Toonify</div></div>", unsafe_allow_html=True)
 
-# ---------- PAGE LOGIC ----------
-if st.session_state.current_user is None:
-    # ---- BEFORE LOGIN ----
-    if selected == "Home":
-        show_dashboard()
-    elif selected == "Login":
-        if st.session_state.show_signup:
-            st.session_state.show_login = False
-            auth.signup()
-        else:
-            st.session_state.show_login = True
-            st.session_state.show_signup = False
-            auth.login()
-else:
-    # ---- AFTER LOGIN ----
-    if selected == "Home":
-        show_home()
-    elif selected == "Profile":
-        show_profile()
-    elif selected == "Log Out":
-        reset_session()
-        st.session_state.menu_choice = "Home"  
-        st.rerun()
+    ####### NAV BAR #####
+    if st.session_state.current_user:
+            # Menu shown after login
+            selected = option_menu(
+                None,
+                NAV_ITEMS_AFTER_LOGIN,
+                icons=NAV_ICONS_AFTER_LOGIN,
+                styles=styling.nav_css,
+                orientation="horizontal",
+                key="navbar_after_login",
+                default_index=NAV_ITEMS_AFTER_LOGIN.index(st.session_state.menu_choice)
+                if st.session_state.menu_choice in NAV_ITEMS_AFTER_LOGIN
+                else 0,
+            )
+    else:
+            # Menu shown before login
+            selected = option_menu(
+                None,
+                NAV_ITEMS_BEFORE_LOGIN,
+                icons=NAV_ICONS_BEFORE_LOGIN,
+                styles=styling.nav_css,
+                orientation="horizontal",
+                default_index=NAV_ITEMS_BEFORE_LOGIN.index(st.session_state.menu_choice)
+                if st.session_state.menu_choice in NAV_ITEMS_BEFORE_LOGIN
+                else 1,
+                key="navbar_before_login", # Renamed key back, it's safe now
+            )
+            
+    st.session_state.menu_choice = selected  # keep track of the selection
+
+
+    # ---------- PAGE LOGIC ----------
+    if st.session_state.current_user is None:
+        # ---- BEFORE LOGIN ----
+        if selected == "Home":
+            show_dashboard()
+        elif selected == "Login":
+            if st.session_state.show_signup:
+                st.session_state.show_login = False
+                auth.signup()
+            else:
+                st.session_state.show_login = True
+                st.session_state.show_signup = False
+                auth.login()
+    else:
+        # ---- AFTER LOGIN ----
+        if selected == "Home":
+            show_home()
+        elif selected == "Profile":
+            show_profile()
+        elif selected == "Log Out":
+            reset_session()
+            st.session_state.menu_choice = "Login"  
+            st.rerun() # This is the single, correct rerun for logout.
+
+
+# --- This line ensures main() ONLY runs when you execute `streamlit run app.py` ---
+if __name__ == "__main__":
+    main()
