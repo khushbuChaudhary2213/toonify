@@ -40,24 +40,7 @@ def set_background_image(image_path: str) -> None:
                 letter-spacing: -2px;
                 text-shadow:8px 4px 0 black;
             }}
-            .hero-title {{
-                text-align: center;
-                background-color: #c7c6c6d4; 
-                border: 4px solid black; 
-                border-radius: 20px; 
-                padding: 40px 80px;
-                overflow: hidden;
-                z-index: 1;
-            }}
-            .hero-title h1{{
-                margin-bottom:20px;
-                
-            }}
-            .hero-title span{{
-                color: black;
-                font-weight:300px;
-                margin-top:12px;
-            }}
+            
             .account{{
                 text-align:center;
                 background-color: #c7c6c6d4; 
@@ -69,6 +52,156 @@ def set_background_image(image_path: str) -> None:
     """
     
     st.markdown(page_css, unsafe_allow_html=True)
+    
+hero_css= """
+    <style>
+        .hero-title {
+                        text-align: center;
+                        background-color: #c7c6c6d4; 
+                        border: 4px solid black; 
+                        border-radius: 20px; 
+                        padding: 40px 80px;
+                        overflow: hidden;
+                        z-index: 1;
+                    }
+                    .hero-title h1{
+                        margin-bottom:20px;
+                        
+                    }
+                    .hero-title span{
+                        color: black;
+                        font-weight:300px;
+                        margin-top:12px;
+                    }
+                    .hero-title h6{
+                        color:black;
+                        margin-top: 20px;
+                        font-size: 22px;
+                        border: 2px solid #1764a6;
+                        padding: 10px;
+                    }
+    </style>
+"""
+    
+#### CSS for DASHBOARD ####
+dashboard_css = """
+                <style>
+                    [data-testid="stHeadingWithActionElements"] h3{
+                                    background-color: #c7c6c6d4;
+                                    border-radius: 22px;
+                                    border: 4px solid black; 
+                                    text-align: center;
+                                    margin-top: 12px;
+                                    color: black;
+                                    margin-bottom:20px;
+                                }
+                    
+                    .usage-steps-div {
+                        margin-top: 40px;
+                        padding: 20px 30px;
+                        border-radius: 15px;
+                        border:4px solid black;
+                        background: #c7c6c6d4;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                    }
+
+                    .usage-steps-heading {
+                        text-align: center;
+                        font-weight: 600;
+                        margin-bottom: 30px;
+                        color: black;
+                    }
+
+                    .usage-steps-heading span {
+                        color: #026cb2;
+                        font-weight: 700;
+                    }
+
+                    .usage-steps {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 25px;
+                        padding: 10px;
+                        position: relative;
+                    }
+
+                    .usage-step {
+                        background: #f9fcff;
+                        padding: 20px;
+                        border-radius: 15px;
+                        box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+                        text-align: center;
+                        border: 1px solid #e0eefc;
+                        transition: all 0.3s ease-in-out;
+                    }
+
+                    .usage-step:hover {
+                        transform: translateY(-5px);
+                        box-shadow: 0 6px 15px rgba(2,108,178,0.2);
+                        border-color: #026cb2;
+                    }
+
+
+                    .usage-step h5{
+                        color: #026cb2;
+                        font-weight: 600;
+                        margin-bottom: 8px;
+                        font-size: 1.1rem;
+                    }
+
+                    .usage-step p {
+                        color: #333;
+                        font-size: 0.95rem;
+                        font-weight:500;
+                        line-height: 1.5;
+                        margin-bottom: 0;
+                    }
+                </style>
+            """
+            
+preview_css = """
+        <style>
+
+            .preview-container {
+                display: flex;
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+
+            .preview-card {
+                background: white;
+                border-radius: 12px;
+                padding: 10px;
+                width: 220px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                text-align: center;
+                transition: transform 0.2s ease;
+            }
+            
+            .preview-card [data-testid="stHeadingWithActionElements"]{
+                color:black;
+            }
+
+            .preview-card:hover {
+                transform: translateY(-5px);
+            }
+
+            .preview-card img {
+                width: 100%;
+                border-radius: 10px;
+            }
+
+            .preview-title {
+
+                margin-top: 8px;
+            }
+
+            .preview-quality {
+                font-size: 14px;
+                color: gray;
+            }
+        </style>
+    """
     
     
 #### CSS for NAVBAR ####
@@ -143,8 +276,7 @@ home_css = """
                             padding:16px;
                             border-radius:22px;
                             font-size:18px;
-                            font-weight:bold;
-                            
+                            font-weight:bold;     
                         }
                         [data-testid="stHeadingWithActionElements"] h6{
                             color:black;
@@ -203,7 +335,6 @@ home_css = """
                                 text-decoration: underline;
                                 font-size: 24px
                         }
-                        
                     </style>
                     """
 

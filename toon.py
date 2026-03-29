@@ -330,36 +330,36 @@ def cartoon_neural_style(image_input, style_model_path: str, resize: int = 512, 
 # DISNEY STYLE CARTOON
 # ------------------------
 
-repo_path = os.path.join(os.path.dirname(__file__), "photo2cartoon")
-sys.path.append(repo_path)
+# repo_path = os.path.join(os.path.dirname(__file__), "photo2cartoon")
+# sys.path.append(repo_path)
 
-# Import the Photo2Cartoon class
-from photo2cartoon_model import Photo2Cartoon
+# # Import the Photo2Cartoon class
+# from photo2cartoon_model import Photo2Cartoon
 
-# Initialize the model once
-c2p = Photo2Cartoon()
+# # Initialize the model once
+# c2p = Photo2Cartoon()
 
-def disney_cartoon(image_path):
-    if not os.path.exists(image_path):
-        print(f"File not found: {image_path}")
-        return None
+# def disney_cartoon(image_path):
+#     if not os.path.exists(image_path):
+#         print(f"File not found: {image_path}")
+#         return None
     
-    try:
-        # Read image from URL
-        image = Image.open(image_path).convert("RGB")
-        img_array = np.array(image)
-        original_h, original_w = img_array.shape[:2]
+#     try:
+#         # Read image from URL
+#         image = Image.open(image_path).convert("RGB")
+#         img_array = np.array(image)
+#         original_h, original_w = img_array.shape[:2]
 
-        # Run the cartoon model
-        cartoon = c2p.inference(img_array)
+#         # Run the cartoon model
+#         cartoon = c2p.inference(img_array)
 
-        if cartoon is not None:
-            # BGR image (for OpenCV compatibility)
-            cartoon_resized = cv2.resize(cartoon, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
-            return cartoon_resized
-        else:
-            return None
-    except Exception as e:
-        print("Error processing image:", e)
-        return None
+#         if cartoon is not None:
+#             # BGR image (for OpenCV compatibility)
+#             cartoon_resized = cv2.resize(cartoon, (original_w, original_h), interpolation=cv2.INTER_LINEAR)
+#             return cartoon_resized
+#         else:
+#             return None
+#     except Exception as e:
+#         print("Error processing image:", e)
+#         return None
 

@@ -1,10 +1,15 @@
 import psycopg2 as pg
+from dotenv import load_dotenv
+import os
 
-hostname = 'localhost'
-database = 'toonify'
-username = 'postgres'
-pwd = 'Khushi@4321'
-port_id = 5432
+load_dotenv()  
+
+hostname = os.getenv("HOSTNAME")
+database = os.getenv("DATABASE")
+username = os.getenv("USERNAME")
+pwd = os.getenv("DB_PASSWORD")
+port_id = os.getenv("PORT_ID")
+
 
 def get_db_connection():
     try:
@@ -53,4 +58,38 @@ def create_users_table():
     finally:
         conn.close()
         
+def create_user_images():
+    conn = get_db_connection()
+    if conn is None:
+        print("Unable to connect to database. Table not created.")
+        return 
+    
+    user_images_query = """
+        CREATE TABLE IF NOT EXISTS user_images (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            style VARCHAR(50),
+            original_image_url TEXT,
+            processed_image_url TEXT, 
+            payment_status VARCHAR(20) DEFAULT 'pending',
+            download_status VARCHAR(20) DEFAULT 'not_downloaded',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """
+    
+    try:
+        cur = conn.cursor()
+        cur.execute(user_images_query)
+        conn.commit()
+        cur.close()
+        print("Table 'user_images' created successfully or already exists.")
+    except Exception as e:
+        print("Failed to create table.")
+        print(e)
+    finally:
+        conn.close()
+    
+
+
 create_users_table()
+create_user_images()

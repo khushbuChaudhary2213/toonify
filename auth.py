@@ -53,7 +53,7 @@ def get_user_by_username(username):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT username, password,email, date_of_birth, address, gender, pincode FROM users WHERE username=%s", (username,))
+        cur.execute("SELECT id, username, password,email, date_of_birth, address, gender, pincode FROM users WHERE username=%s", (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -61,6 +61,21 @@ def get_user_by_username(username):
     except Exception as e:
         st.error(f"Error fetching user: {e}")
         return None
+    
+def get_styles_paid_by_user(id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT style FROM user_images WHERE user_id=%s AND payment_status = 'paid' ", (id,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return rows
+    except Exception as e:
+        st.error(f"Error fetching styles: {e}")
+        return None
+
+
 
 #### FORM SHOW AND HIDE LOGIC USING SESSION STATE ####
 
@@ -79,7 +94,6 @@ def show_signup():
     st.session_state.show_signup = True
 def logout_user():
     st.session_state.current_user = None
-    # st.session_state.redirect_to_nav = "Login"
 def close_edit_form():
     st.session_state.edit_mode = False
     
@@ -120,12 +134,15 @@ def login():
                 if user is None:
                     st.error("Invalid username or password.")
                 else:
-                    stored_username, stored_hash,stored_email, stored_dob,stored_address, stored_gender,stored_pincode = user
+                    stored_user_id, stored_username, stored_hash,stored_email, stored_dob,stored_address, stored_gender,stored_pincode = user
                     if bcrypt.checkpw(
                         password.encode(),
                         stored_hash.encode() if isinstance(stored_hash, str) else stored_hash,
                     ):
+                        styles_rows = get_styles_paid_by_user(stored_user_id)
+                        st.session_state.paid_styles = set(r[0] for r in styles_rows)
                         st.session_state.current_user = {
+                            "id": stored_user_id,
                             "username": stored_username,
                             "email": stored_email,
                             "date_of_birth": stored_dob,
@@ -230,6 +247,7 @@ def signup():
                     
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
+                    
         st.write("---")
         st.subheader("Already have an account?")
         st.button("Log In",key="show_login_btn", on_click=show_login)  
